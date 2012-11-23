@@ -141,6 +141,22 @@ Validate attachment's content type:
 );
 </code></pre>
 
+Validate attachment's MIME type:
+
+<pre><code>var $validate = array(
+	'avatar' => array(
+		'image1 => array(
+			'rule' => array('attachmentMimeType', 'image/jpeg'),
+			'message' => 'Only jpegs please'
+		),
+		'image2' => array(
+			'rule' => array('attachmentMimeType', array('image/jpeg', 'image/gif')),
+			'message' => 'Only jpegs or gifs please'
+		),
+	)
+);
+</code></pre>
+
 Validate attachment's presence:
 
 <pre><code>var $validate = array(

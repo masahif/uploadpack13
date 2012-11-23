@@ -76,6 +76,12 @@ class UploadBehavior extends ModelBehavior {
         $data = $model->data[$model->name][$settings['urlField']];
       }
 
+      if (!empty($data['tmp_name'])){
+	$finfo = finfo_open(FILEINFO_MIME_TYPE);
+	$data['type'] = strtolower(finfo_file($finfo, ($data['tmp_name'])));
+	$model->data[$model->name][$field] = $data;
+      }
+
       if (!is_array($data)) {
         $model->data[$model->name][$field] = $this->_fetchFromUrl($data);
       }
@@ -230,21 +236,24 @@ class UploadBehavior extends ModelBehavior {
   function _resize($srcFile, $destFile, $geometry, $quality = 75) {
     copy($srcFile, $destFile);
     @chmod($destFile, 0777);
-    $pathinfo = UploadBehavior::_pathinfo($srcFile);
+    // $pathinfo = UploadBehavior::_pathinfo($srcFile);
     $src = null;
     $createHandler = null;
     $outputHandler = null;
-    switch (low($pathinfo['extension'])) {
-      case 'gif':
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime_type = strtolower(finfo_file($finfo, $srcFile));
+
+    switch ($mime_type) {
+      case 'image/gif':
         $createHandler = 'imagecreatefromgif';
         $outputHandler = 'imagegif';
         break;
-      case 'jpg':
-      case 'jpeg':
+      case 'image/jpeg':
         $createHandler = 'imagecreatefromjpeg';
         $outputHandler = 'imagejpeg';
         break;
-      case 'png':
+      case 'image/png':
         $createHandler = 'imagecreatefrompng';
         $outputHandler = 'imagepng';
         $quality = null;
@@ -312,6 +321,7 @@ class UploadBehavior extends ModelBehavior {
       imagefill($img, 0, 0, imagecolorallocate($img, 255, 255, 255));
       imagecopyresampled($img, $src, ($destW-$resizeW)/2, ($destH-$resizeH)/2, 0, 0, $resizeW, $resizeH, $srcW, $srcH);
       $outputHandler($img, $destFile, $quality);
+      chmod($destFile, 0644);
       return true;
     }
     return false;
@@ -345,6 +355,30 @@ class UploadBehavior extends ModelBehavior {
             return true;
           }
         } elseif ($contentType == $value['type']) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return true;
+  }
+
+  function attachmentMimeType(&$model, $value, $contentTypes) {
+    $value = array_shift($value);
+    if (!is_array($contentTypes)) {
+      $contentTypes = array($contentTypes);
+    }
+    
+    if (!empty($value['tmp_name'])) {
+      if (is_readable($value['tmp_name'])) {
+	$tmp_type = strtolower(mime_content_type($value['tmp_name']));
+      } else {
+	return false;
+      }
+
+      foreach ($contentTypes as $contentType) {
+	$contentType = strtolower($contentType);
+	if ($contentType === $value['type']) {
           return true;
         }
       }
